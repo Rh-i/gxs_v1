@@ -162,13 +162,22 @@ SECTIONS
   .dma_buffer :
   {
     . = ALIGN(32);
-    _sdma_buffer = .;
+    __dma_buffer_start = .;
     *(.dma_buffer)
     *(.dma_buffer*)
     . = ALIGN(32);
-    _edma_buffer = .;
+    __dma_buffer_end = .;
   } >RAM_D1 AT> FLASH
-  _sidma_buffer = LOADADDR(.dma_buffer);
+  __dma_buffer_load = LOADADDR(.dma_buffer);
+
+  /* stm32_framework：fault_record 现场，NOLOAD 且不在 .bss 范围，复位后仍保留 */
+  .noinit (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.noinit)
+    *(.noinit*)
+    . = ALIGN(4);
+  } >RAM_D1
 
   /* 用户dma相关配置结束 */
 
