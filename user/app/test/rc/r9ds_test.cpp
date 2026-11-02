@@ -34,6 +34,10 @@
 #include <stdint.h>
 
 
+#if APP_TEST_RC_R9DS_ENABLED
+
+
+
 /**
  * @brief 打印开关：1 = 通道值（200 ms）；0 = 在线状态（20 ms）
  * @note 二选一不叠加：同时打会把串口刷满，跳变时刻反而看不清。
@@ -105,3 +109,5 @@ extern "C" void r9ds_test_task(void *argument)
 
 
 
+
+#endif // APP_TEST_RC_R9DS_ENABLED

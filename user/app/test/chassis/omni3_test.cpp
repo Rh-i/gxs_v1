@@ -22,6 +22,10 @@
 #include <stdint.h>
 
 
+#if APP_TEST_CHASSIS_OMNI3_ENABLED
+
+
+
 
 // 相位表：vx 右正、vy 前正、ω 俯视逆时针正（cm/s、rad/s）
 constexpr struct
@@ -71,3 +75,5 @@ extern "C" void omni3_test_task(void *argument)
   }
 }
 
+
+#endif // APP_TEST_CHASSIS_OMNI3_ENABLED

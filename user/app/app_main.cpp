@@ -18,6 +18,7 @@
 #include "system.hpp"     // system_init / board_init 的 sys_state
 
 #include "app_task.hpp"
+#include "app_test.hpp" // 测试开关（默认全 0：不创建任何自测任务）
 
 
 /**
@@ -31,7 +32,7 @@
  *         5. 创建业务任务   —— 必须在 system_start() 之后，否则任务被立刻放行
  *
  *       每一步内部都带 configASSERT，失败就地停机，fault_record 记下行号。
- *       自测任务（user/app/test/）默认不创建，需要时在末尾自己加 xTaskCreate。
+ *       自测任务由 `app_test.hpp` 的 `APP_TEST_*_ENABLED` 开关控制，默认全 0（不创建）。
  */
 void app_init(void)
 {
@@ -56,6 +57,28 @@ void app_init(void)
 
   /* 遥控任务：100 Hz，读 R9DS → 底盘目标（独占 r9ds.update()） */
   configASSERT(xTaskCreate(remote_task, "remote", 512, NULL, tskIDLE_PRIORITY + 5, NULL) == pdPASS);
+
+  /* ==================== 自测任务（开关见 app_test.hpp，默认全 0） ==================== */
+
+#if APP_TEST_MOTOR_OPENLOOP_ENABLED
+  /* 三电机开环正反转：20 ms 一步（此模式下别开 motor_task） */
+  configASSERT(xTaskCreate(motor_openloop_test_task, "open", 512, NULL, tskIDLE_PRIORITY + 4, NULL) == pdPASS);
+#endif
+
+#if APP_TEST_MOTOR_PID_TUNE_ENABLED
+  /* PID 调参：1 kHz 控制环 + motor1 方波（此模式下别开 motor_task） */
+  configASSERT(xTaskCreate(pid_tune_task, "pid_tune", 768, NULL, tskIDLE_PRIORITY + 6, NULL) == pdPASS);
+#endif
+
+#if APP_TEST_RC_R9DS_ENABLED
+  /* R9DS 自检：200 ms 打一行通道值（改 r9ds_test.cpp 的开关可切在线状态） */
+  configASSERT(xTaskCreate(r9ds_test_task, "r9ds", 512, NULL, tskIDLE_PRIORITY + 4, NULL) == pdPASS);
+#endif
+
+#if APP_TEST_CHASSIS_OMNI3_ENABLED
+  /* 底盘运动学自测：2 s 一段，200 ms 打三轮目标/实测（速度环由 motor_task 跑） */
+  configASSERT(xTaskCreate(omni3_test_task, "omni3", 512, NULL, tskIDLE_PRIORITY + 4, NULL) == pdPASS);
+#endif
 }
 
 

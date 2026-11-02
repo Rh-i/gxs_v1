@@ -1,7 +1,6 @@
 #include "app_test.hpp"
 
 #include "board_cfg.hpp"
-#include "board_cfg.hpp"
 
 #include "FreeRTOS.h" // IWYU pragma: keep
 #include "task.h"
