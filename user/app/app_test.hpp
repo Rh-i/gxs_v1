@@ -13,15 +13,9 @@
 #ifndef __APP_TEST_HPP__
 #define __APP_TEST_HPP__
 
-/**
- * @brief 三电机开环正反转（user/app/test/motor/）
- * @note 1 = 创建 motor_openloop_test_task：20 ms 一步，占空比 0→100→0 三角波；
- *       正转 = A 路出力、B 路给 0；反转 = B 路出力、A 路给 0。
- * @note 用这个就不开 motor_task（两边会抢同一批 PWM）。
- * @warning 任务函数目前只有声明、没有实现文件，打开本宏会链接失败，需先补
- *          `user/app/test/motor/motor_openloop_test.cpp`。
- */
-#define APP_TEST_MOTOR_OPENLOOP_ENABLED 0
+/* 三电机开环正反转测试暂时没有实现文件（`user/app/test/motor/motor_openloop_test.cpp`），
+ * 所以不提供开关：要加就先补实现，再在下面按 `APP_TEST_<域>_<功能>_ENABLED` 的写法加宏，
+ * 并在 app_main.cpp 里加对应的 xTaskCreate（注意此时不要同时开 motor_task，两边抢 PWM）。 */
 
 /**
  * @brief PID 调参任务（方波阶跃，user/app/test/motor/pid_tune_test.cpp）

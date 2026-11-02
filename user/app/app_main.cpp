@@ -60,11 +60,6 @@ void app_init(void)
 
   /* ==================== 自测任务（开关见 app_test.hpp，默认全 0） ==================== */
 
-#if APP_TEST_MOTOR_OPENLOOP_ENABLED
-  /* 三电机开环正反转：20 ms 一步（此模式下别开 motor_task） */
-  configASSERT(xTaskCreate(motor_openloop_test_task, "open", 512, NULL, tskIDLE_PRIORITY + 4, NULL) == pdPASS);
-#endif
-
 #if APP_TEST_MOTOR_PID_TUNE_ENABLED
   /* PID 调参：1 kHz 控制环 + motor1 方波（此模式下别开 motor_task） */
   configASSERT(xTaskCreate(pid_tune_task, "pid_tune", 768, NULL, tskIDLE_PRIORITY + 6, NULL) == pdPASS);
