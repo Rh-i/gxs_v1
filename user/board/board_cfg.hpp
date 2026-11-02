@@ -10,7 +10,8 @@
  *          - 旧 `Pid::Config{{kp, ki, kd}, {limit}}` → `PID::Config(kp, ki, kd, out_max)`
  *
  *          【硬规矩】
- *            - 串口用 DMA 时必须放 `.dma_buffer`
+ *            - 串口用 DMA 时必须放 `.dma_buffer`，且段名按变量唯一（`.dma_buffer.<变量名>`）：
+ *              实例是 inline 变量，段名相同会让多个 TU 的弱定义数据挤进同一个输出段
  *            - 只能用库里已有的 `BspUartT` 组合：`<dma,128,128>`、`<it,128,128>`、`<it,128,32>`
  *            - 每个实例都要在 `board_instances.hpp` 里出现，否则中断不会分发
  */
@@ -46,20 +47,20 @@ inline BspDwt bsp_dwt {}; ///< 内核 CYCCNT 计时，CPU 频率由 init() 从 R
 
 /* ==================== 外设：UART（5 路全 DMA） ==================== */
 
-inline __attribute__((section(".dma_buffer"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart2(
+inline __attribute__((section(".dma_buffer.bsp_uart2"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart2(
     {.huart = &huart2, .mode = UartDir::TxRx, .baudrate = 230400U}); ///< PA2/PA3
 
-inline __attribute__((section(".dma_buffer"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart3(
+inline __attribute__((section(".dma_buffer.bsp_uart3"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart3(
     {.huart = &huart3, .mode = UartDir::TxRx, .baudrate = 115200U}); ///< PC10/PC11（调试打印）
 
 // UART4 = SBUS：只收不发（RX 走 DMA + IDLE 断帧）；100000/8E2 由 CubeMX 写进 huart4
-inline __attribute__((section(".dma_buffer"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart4(
+inline __attribute__((section(".dma_buffer.bsp_uart4"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart4(
     {.huart = &huart4, .mode = UartDir::RxOnly, .baudrate = 100000U}); ///< PA11/PA12（SBUS）
 
-inline __attribute__((section(".dma_buffer"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart7(
+inline __attribute__((section(".dma_buffer.bsp_uart7"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart7(
     {.huart = &huart7, .mode = UartDir::TxRx, .baudrate = 921600U}); ///< PE7/PE8
 
-inline __attribute__((section(".dma_buffer"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart10(
+inline __attribute__((section(".dma_buffer.bsp_uart10"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart10(
     {.huart = &huart10, .mode = UartDir::TxRx, .baudrate = 921600U}); ///< PE2/PE3
 
 /** @brief 调试打印：默认走 USART3 */

@@ -31,9 +31,9 @@ extern "C" void motor_task(void *argument)
   {
     const float dt_s = static_cast<float>(bsp_dwt.get_delta_s(&mark));
 
-      motor1.update(dt_s);
-      motor2.update(dt_s);
-      motor3.update(dt_s);
+    motor1.update(dt_s);
+    motor2.update(dt_s);
+    motor3.update(dt_s);
 
     vTaskDelayUntil(&wake_time, pdMS_TO_TICKS(MOTOR_TASK_PERIOD_MS));
   }
