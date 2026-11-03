@@ -42,7 +42,9 @@ void board_init(void);
 
 /* ==================== 外设：计时 ==================== */
 
-inline BspDwt bsp_dwt {}; ///< 内核 CYCCNT 计时，CPU 频率由 init() 从 RCC 读出
+// bsp_dwt 由库内部初始化：实例定义在 stm32-framework/code/service/system.cpp，
+// 初始化在 code/service/system.cpp 的 system_init() 里。这里只包含头文件，直接调用即可
+// （如 bsp_dwt.get_delta_s(&last)），不要再定义实例、不要再调 init()。
 
 
 /* ==================== 外设：UART（5 路全 DMA） ==================== */

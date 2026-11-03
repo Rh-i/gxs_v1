@@ -13,8 +13,7 @@
 
 void board_init(void)
 {
-  // ① 计时基准：sys_task 靠它算 10 ms 周期耗时，必须最先起来
-  configASSERT(bsp_dwt.init() == Status::OK);
+  // ① 计时基准 bsp_dwt 已由 system_init() 内部 init()，这里不再重复初始化
 
   // ② 串口：DMA 收发（实例在 .dma_buffer）
   configASSERT(bsp_uart2.init() == Status::OK);  // PA2/PA3
