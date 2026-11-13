@@ -15,6 +15,7 @@
 
 #include "board_cfg.hpp"    // bsp_uart3（打印）
 #include "module_cfg.hpp" // chassis
+#include "system.hpp"     // sys_state
 
 #include "FreeRTOS.h" // IWYU pragma: keep
 #include "task.h"
@@ -52,6 +53,7 @@ constexpr uint32_t PRINT_MS  = 200U;  // 打印 5 Hz，够看趋势又不刷爆 
 extern "C" void omni3_test_task(void *argument)
 {
   (void)argument;
+  sys_state.wait_running(); // 初始化失败时任务自行退出，不跑在半初始化的系统上
   static_assert(configTICK_RATE_HZ == 1000U, "本文件的毫秒常量按 1 ms tick 写");
 
   bsp_uart3.printf("[OMNI] 3-wheel omni: FWD=+y, RIGHT=+x, SPIN+=CCW\r\n");

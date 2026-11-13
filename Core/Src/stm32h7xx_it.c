@@ -51,7 +51,7 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void fault_on_exception(uint32_t kind, uint32_t exc_return); /* 库：service/fault_record.cpp，不返回 */
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -96,7 +96,7 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-
+  fault_on_exception(4U, (uint32_t)__builtin_return_address(0)); /* 4 = HARD_FAULT；返回地址就是 EXC_RETURN */
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {
@@ -111,7 +111,7 @@ void HardFault_Handler(void)
 void MemManage_Handler(void)
 {
   /* USER CODE BEGIN MemoryManagement_IRQn 0 */
-
+  fault_on_exception(5U, (uint32_t)__builtin_return_address(0)); /* 5 = MEM_MANAGE */
   /* USER CODE END MemoryManagement_IRQn 0 */
   while (1)
   {
@@ -126,7 +126,7 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
   /* USER CODE BEGIN BusFault_IRQn 0 */
-
+  fault_on_exception(6U, (uint32_t)__builtin_return_address(0)); /* 6 = BUS_FAULT */
   /* USER CODE END BusFault_IRQn 0 */
   while (1)
   {
@@ -141,7 +141,7 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
   /* USER CODE BEGIN UsageFault_IRQn 0 */
-
+  fault_on_exception(7U, (uint32_t)__builtin_return_address(0)); /* 7 = USAGE_FAULT */
   /* USER CODE END UsageFault_IRQn 0 */
   while (1)
   {

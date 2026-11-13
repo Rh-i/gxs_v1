@@ -1,5 +1,6 @@
 #include "board_cfg.hpp"
 #include "bsp_key.hpp" // IWYU pragma: keep (BspKey::Event)
+#include "system.hpp"  // sys_state
 #include "FreeRTOS.h" // IWYU pragma: keep
 #include "task.h"
 
@@ -8,6 +9,7 @@
 extern "C" void key_task(void *argument)
 {
   (void)argument;
+  sys_state.wait_running(); // 初始化失败时任务自行退出，不跑在半初始化的系统上
 
   for (;;)
   {
@@ -16,6 +18,7 @@ extern "C" void key_task(void *argument)
     {
       case BspKey::Event::PRESS: // 按下：左亮
         led_b.set();
+        led_g.reset();
         break;
       case BspKey::Event::LONG: // 长按：左灭、切到右
         led_b.reset();

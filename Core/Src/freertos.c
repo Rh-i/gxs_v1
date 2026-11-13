@@ -27,7 +27,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app_main.h"
-#include "app_main.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -134,11 +133,7 @@ void MX_FREERTOS_Init(void) {
 __weak void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+  app_default_task(argument); /* 默认任务的任务体在 app_main.cpp，不返回 */
   /* USER CODE END StartDefaultTask */
 }
 

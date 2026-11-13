@@ -1,14 +1,14 @@
 {
     "clangd.arguments": [
         "--compile-commands-dir=build/Debug",
-        "--query-driver=**/arm-none-eabi-g++,/**/arm-none-eabi-gcc"                     
+        "--query-driver=**/arm-none-eabi-g++,/**/arm-none-eabi-gcc"
     ],
     "cortex-debug.variableUseNaturalFormat": true,
     "cmake.useCMakePresets": "always",
     "VsCodeTaskButtons.showCounter": false,
     "VsCodeTaskButtons.tasks": [
         {
-            "label": "[🔨 编译 F7]",
+            "label": "[🔨 编译]",
             "task": "Build",
             "tooltip": "编译项目"
         },
@@ -23,24 +23,14 @@
             "tooltip": "仅清理构建产物"
         },
         {
-            "label": "[⚡ DAP烧录Linux]",
-            "task": "OpenOCD_flash_linux",
-            "tooltip": "OpenOCD 烧录 (Linux)"
+            "label": "[⚡ DAP烧录]",
+            "task": "OpenOCD_flash",
+            "tooltip": "OpenOCD + DAPLink 烧录"
         },
         {
-            "label": "[⚡ DAP烧录Win]",
-            "task": "OpenOCD_flash_win",
-            "tooltip": "OpenOCD 烧录 (Windows)"
-        },
-        {
-            "label": "[🔌 JLink烧录Linux]",
-            "task": "JLink_flash_linux",
-            "tooltip": "JLink 烧录 (Linux)"
-        },
-        {
-            "label": "[🔌 JLink烧录Win]",
-            "task": "JLink_flash_win",
-            "tooltip": "JLink 烧录 (Windows)"
+            "label": "[🔌 JLink烧录]",
+            "task": "JLink_flash",
+            "tooltip": "经 OpenOCD 的 jlink 适配器烧录"
         }
     ],
     "stm32cube-ide-clangd.path": "cube",
@@ -52,12 +42,12 @@
     "cmake.cmakePath": "cmake",
     "outlinePlus.regionBoundaryPatternByLanguageId": {
         "c": {
-            "startRegex": "^\\s*//+\\s*-{16}\\s*(.+?)\\s*-{16}\\s*$",
-            "endRegex": "^\\s*//+\\s*-{16}\\s*$"
+            "startRegex": "^\\s*(?:/\\*|//)\\s*(?:={16,}|-{16,})\\s*(.+?)\\s*(?:={16,}|-{16,})\\s*(?:\\*/)?\\s*$",
+            "endRegex": "^\\s*(?:/\\*|//)\\s*(?:={16,}|-{16,})\\s*(?:\\*/)?\\s*$"
         },
         "cpp": {
-            "startRegex": "^\\s*//+\\s*-{16}\\s*(.+?)\\s*-{16}\\s*$",
-            "endRegex": "^\\s*//+\\s*-{16}\\s*$"
+            "startRegex": "^\\s*(?:/\\*|//)\\s*(?:={16,}|-{16,})\\s*(.+?)\\s*(?:={16,}|-{16,})\\s*(?:\\*/)?\\s*$",
+            "endRegex": "^\\s*(?:/\\*|//)\\s*(?:={16,}|-{16,})\\s*(?:\\*/)?\\s*$"
         }
     }
 }

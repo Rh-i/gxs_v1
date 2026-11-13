@@ -23,15 +23,15 @@
  *   1. 调试打印开关 `UART_PRINT_ENABLE` 与 `print_uart(...)` 定义在 `board_cfg.hpp`：
  *      它们要绑定具体的串口实例，跟着实例放才不会互相牵连（本文件只放“不依赖实例”的宏）。
  *   2. `BspUart::printf()` 的取锁 / 入队等待上限目前是**库内固定值**（各 10 ms，见
- *      code/bsp/bsp_uart.cpp），没有做成可调宏——想要可调得先改库。
+ *      code/bsp/bsp_uart.hpp），没有做成可调宏——想要可调得先改库。
  */
 
 #ifndef HARDWARE_CONFIG_H
 #define HARDWARE_CONFIG_H
 
-#include "FreeRTOS.h"      // IWYU pragma: keep（configMAX_PRIORITIES）
-#include "stm32h7xx_hal.h" // IWYU pragma: keep（HAL_*_MODULE_ENABLED）
-#include "task.h"          // IWYU pragma: keep（tskIDLE_PRIORITY）
+#include "FreeRTOS.h"     // IWYU pragma: keep（configMAX_PRIORITIES）
+#include "bsp_series.hpp" // IWYU pragma: keep（BSP_CAN_MODULE_ENABLED）
+#include "task.h"         // IWYU pragma: keep（configMAX_PRIORITIES）
 
 /* ==================== ① 功能开关：关掉就不编译对应代码、也不创建对应任务 ==================== */
 
@@ -44,12 +44,12 @@
 /** @brief sys_task 里的串口补救巡检 */
 #define UART_PATROL_ENABLE 1
 
-/* HAL 没开对应模块时强制关闭，避免任务引用不存在的类型（例如换板时 CubeMX 里没开 FDCAN） */
-#ifndef HAL_FDCAN_MODULE_ENABLED
+/* 宿主没开 CAN（H7 的 FDCAN / F4 的 bxCAN）时强制关闭，避免任务引用不存在的类型 */
+#if !BSP_CAN_MODULE_ENABLED
 #  undef CAN_RX_ENABLE
 #  undef CAN_TX_ENABLE
-#define CAN_RX_ENABLE 0
-#define CAN_TX_ENABLE 0
+#  define CAN_RX_ENABLE 0
+#  define CAN_TX_ENABLE 0
 #endif
 
 #ifndef HAL_UART_MODULE_ENABLED
@@ -60,29 +60,27 @@
 /* ==================== */
 /* ==================== 库任务（system_init() 创建） ==================== */
 
-/** @brief 系统维护任务 sys_task 的优先级：低于业务任务（常用 idle+7），低于 CAN 收发任务
- *  @note sys_task 只做 10 ms 维护（CAN 恢复 / 串口巡检 / Online 计时），
- *        让业务任务与 CAN 收发先跑；与业务任务同优先级会导致时间片轮转、控制周期抖动。 */
-#define SYS_TASK_PRIORITY (tskIDLE_PRIORITY + 6)
+/** @brief 系统维护任务 sys_task 的优先级（默认 configMAX_PRIORITIES - 4，CMSIS_V2 下是 52）
+ *  @note 库任务的优先级按 configMAX_PRIORITIES 往下取：CAN 收发（-2）> BMI088（-3）> sys（-4），最高一档留给用户。
+ *        业务任务必须低于这三个：CubeMX 的 osPriorityNormal（24）、osPriorityHigh（40）都可以。
+ *  @note sys_task 每 10 ms 只做几十微秒的维护（CAN 恢复 / 串口巡检 / Online 计时），放得高也不会占住 CPU。 */
+#define SYS_TASK_PRIORITY (configMAX_PRIORITIES - 4)
 /** @brief sys_task 栈深（字） */
 #define SYS_TASK_STACK 256
 
-/** @brief CAN 收 / 发任务的优先级：最高，1 kHz 节拍内必须跑完 */
-#define CAN_TASK_PRIORITY (tskIDLE_PRIORITY + 8)
+/** @brief CAN 收 / 发任务的优先级（默认 configMAX_PRIORITIES - 2）：库任务里最高，1 kHz 节拍内必须跑完 */
+#define CAN_TASK_PRIORITY (configMAX_PRIORITIES - 2)
 /** @brief CAN 收 / 发任务栈深（字）：接收节点回调在 can_rx_task 里同步执行，回调用栈多就加大 */
 #define CAN_TASK_STACK 512
 
 /* ==================== */
 /* ==================== CAN ==================== */
 
-/** @brief 每路 CAN 的接收队列深度（帧）：ISR 写入，can_rx_task 每毫秒取走 */
-#define CAN_RX_QUEUE_FRAMES 16
-/** @brief 每路 CAN 的回退队列深度（帧）：没有接收节点认领的帧，供 BspCan::receive() 读取 */
+/** @brief 每路 CAN 的回退缓冲深度（帧）：没有接收节点认领的帧放这里，供 BspCanT::receive() 读取；
+ *  0 = 不建回退缓冲（没人认领的帧只计入 diagnostics.rx_unclaimed，receive() 返回 NOT_SUPPORTED）。CAN_RX_ENABLE = 0 时不用 */
 #define CAN_RX_RETURN_FRAMES 16
 /** @brief can_rx_task 每 1 ms 每条总线最多分发的帧数（1~64） */
 #define CAN_RX_DISPATCH_PER_TICK 16
-/** @brief 每路 CAN 的发送队列深度（帧） */
-#define CAN_TX_QUEUE_FRAMES 8
 /** @brief 接收节点总数上限（全部总线合计，≤255） */
 #define CAN_RX_NODE_MAX 50
 /** @brief 发送节点总数上限（全部总线合计，≤255） */
@@ -91,17 +89,21 @@
 #define CAN_CMD_EXPIRE_MS 100
 /** @brief 保底心跳 (ms)：发送节点至少这么久整帧发一次 */
 #define CAN_TX_HEARTBEAT_MS 5
-/** @brief Bus-Off 恢复的重试间隔 (ms) */
+/** @brief 共帧槽位凑不齐时最多等多久就发 (ms)：有槽位填了新数据、其余槽位这么久还没刷新，也发出去（计入节点的 partial_sends） */
+#define CAN_TX_GATHER_MS 1
+/** @brief Bus-Off 恢复的重试间隔 (ms)，≥ 10（sys_task 每 10 ms 检查一次）；每路 CAN 的收发队列深度由 BspCanT<RX, TX> 的模板参数决定 */
 #define CAN_BUSOFF_RETRY_MS 100
 
 /* ==================== */
 /* ==================== UART ==================== */
 
-/** @brief BspUart::init() 打开 UART 硬件 FIFO（16 字节）；0 = 保持 CubeMX 的设置 */
+/** @brief BspUart::init() 打开 UART 硬件 FIFO（16 字节）；0 = 保持 CubeMX 的设置
+ *  @note 本板（H7）有硬件 FIFO，保留开启；开 FIFO 后 tx_recover() 中止发送会清掉 TX FIFO 里最多 16 字节
+ *        （只在卡死恢复路径上）。F4 没有硬件 FIFO，该宏在 F4 上恒为 0（有 static_assert 拦）。 */
 #define UART_ENABLE_FIFO 1
 
 /* 注意：`BspUart::printf()` 的等待上限目前是**库内固定值**（取锁 10 ms / 入队 10 ms，
- * 见 code/bsp/bsp_uart.cpp），没有做成可调宏；调试打印开关 UART_PRINT_ENABLE 也在
+ * 见 code/bsp/bsp_uart.hpp 的 PRINTF_TIMEOUT_MS），没有做成可调宏；调试打印开关 UART_PRINT_ENABLE 也在
  * board_cfg.hpp（要绑串口实例）。详见文件头“不在这里的两项”。 */
 
 /* ==================== */
@@ -115,8 +117,8 @@
 /* ==================== */
 /* ==================== BMI088 ==================== */
 
-/** @brief DeviceBmi088 自动刷新任务的优先级：低于库的 sys / CAN 任务，高于一般业务任务 */
-#define BMI088_TASK_PRIORITY (tskIDLE_PRIORITY + 6)
+/** @brief DeviceBmi088 自动刷新任务的优先级（默认 configMAX_PRIORITIES - 3）：低于 CAN 收发、高于 sys 与业务任务 */
+#define BMI088_TASK_PRIORITY (configMAX_PRIORITIES - 3)
 /** @brief DeviceBmi088 自动刷新任务栈深（字）：含 VQF 姿态解算 */
 #define BMI088_TASK_STACK 512
 
@@ -130,15 +132,18 @@ static_assert(CAN_TX_ENABLE == 0 || CAN_TX_ENABLE == 1, "hardware_config.h: CAN_
 static_assert(UART_PATROL_ENABLE == 0 || UART_PATROL_ENABLE == 1, "hardware_config.h: UART_PATROL_ENABLE 取 0 或 1");
 static_assert(SYS_TASK_PRIORITY < configMAX_PRIORITIES, "hardware_config.h: SYS_TASK_PRIORITY 必须小于 configMAX_PRIORITIES");
 static_assert(CAN_TASK_PRIORITY < configMAX_PRIORITIES, "hardware_config.h: CAN_TASK_PRIORITY 必须小于 configMAX_PRIORITIES");
+static_assert(BMI088_TASK_PRIORITY < configMAX_PRIORITIES, "hardware_config.h: BMI088_TASK_PRIORITY 必须小于 configMAX_PRIORITIES");
 static_assert(SYS_TASK_STACK >= 128 && CAN_TASK_STACK >= 128, "hardware_config.h: 库任务栈深至少 128 字");
-static_assert(CAN_RX_QUEUE_FRAMES >= 1 && CAN_RX_RETURN_FRAMES >= 1 && CAN_TX_QUEUE_FRAMES >= 1, "hardware_config.h: CAN 队列深度至少 1 帧");
+static_assert(CAN_RX_RETURN_FRAMES >= 0, "hardware_config.h: CAN_RX_RETURN_FRAMES 不能为负（0 = 不建回退缓冲）");
 static_assert(CAN_RX_DISPATCH_PER_TICK >= 1 && CAN_RX_DISPATCH_PER_TICK <= 64, "hardware_config.h: CAN_RX_DISPATCH_PER_TICK 取 1~64");
 static_assert(CAN_RX_NODE_MAX >= 1 && CAN_RX_NODE_MAX <= 255, "hardware_config.h: CAN_RX_NODE_MAX 取 1~255（计数为 uint8_t）");
 static_assert(CAN_TX_NODE_MAX >= 1 && CAN_TX_NODE_MAX <= 255, "hardware_config.h: CAN_TX_NODE_MAX 取 1~255（计数为 uint8_t）");
 static_assert(CAN_TX_HEARTBEAT_MS >= 1, "hardware_config.h: CAN_TX_HEARTBEAT_MS 至少 1 ms");
 static_assert(CAN_CMD_EXPIRE_MS > CAN_TX_HEARTBEAT_MS, "hardware_config.h: 指令有效期必须长于保底心跳");
-static_assert(CAN_BUSOFF_RETRY_MS >= 1, "hardware_config.h: CAN_BUSOFF_RETRY_MS 至少 1 ms");
+static_assert(CAN_TX_GATHER_MS >= 1 && CAN_TX_GATHER_MS < CAN_TX_HEARTBEAT_MS, "hardware_config.h: CAN_TX_GATHER_MS 取 1 ~ 心跳周期 - 1");
+static_assert(CAN_BUSOFF_RETRY_MS >= 10, "hardware_config.h: CAN_BUSOFF_RETRY_MS 至少 10 ms（sys_task 每 10 ms 检查一次）");
 static_assert(UART_ENABLE_FIFO == 0 || UART_ENABLE_FIFO == 1, "hardware_config.h: UART_ENABLE_FIFO 取 0 或 1");
+static_assert(BSP_UART_HAS_FIFO != 0 || UART_ENABLE_FIFO == 0, "hardware_config.h: 本系列没有 UART 硬件 FIFO，UART_ENABLE_FIFO 必须为 0");
 static_assert(SPI_DMA_BUFFER_SIZE >= 16 && SPI_DMA_BUFFER_SIZE <= 65535, "hardware_config.h: SPI_DMA_BUFFER_SIZE 取 16~65535");
 static_assert(SPI_TRANSFER_TIMEOUT_MS >= 1, "hardware_config.h: SPI_TRANSFER_TIMEOUT_MS 至少 1 ms");
 static_assert(BMI088_TASK_STACK >= 128, "hardware_config.h: BMI088_TASK_STACK 至少 128 字");

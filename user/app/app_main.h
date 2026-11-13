@@ -4,7 +4,8 @@
  * @brief 应用层与 STM32 的接口：初始化入口与任务声明
  *
  * @note 初始化入口只有 `app_init()`，由 freertos.c 的 `MX_FREERTOS_Init()` 调用；
- *       任务体在 `user/app/task/`，自测代码在 `user/app/test/`。
+ *       默认任务体是 `app_default_task()`，由 freertos.c 的 `StartDefaultTask()` 转调；
+ *       业务任务体在 `user/app/task/`，自测代码在 `user/app/test/`。
  *
  * @copyright Copyright (c) 2026
  */
@@ -33,10 +34,11 @@ extern "C"
   /* ==================== 任务函数声明 ==================== */
 
   /**
-   * @brief 默认任务（CubeMX 生成，保留原名）
-   * @param argument 任务参数
+   * @brief CubeMX 默认任务 defaultTask 的任务体：freertos.c 的 StartDefaultTask() 在 USER CODE 段里转调它（不返回）
+   * @note 不在 C++ 里直接定义 StartDefaultTask：只有 CubeMX 把 defaultTask 设成 "As weak" 时强定义才能覆盖，
+   *       默认设置下会重复定义。转调由 freertos.c 的 USER CODE StartDefaultTask 段完成。
    */
-  void StartDefaultTask(void *argument);
+  void app_default_task(void *argument);
 
 #ifdef __cplusplus
 }

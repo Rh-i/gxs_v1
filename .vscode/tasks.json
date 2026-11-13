@@ -85,52 +85,7 @@
                 "clear": true
             }
         },
-        /* ==================== 烧录（Linux） ==================== */
-        {
-            "label": "OpenOCD_flash_linux",
-            "detail": "OpenOCD + DAPLink 烧录（Linux）",
-            "type": "process",
-            "command": "${workspaceFolder}/Flash/OpenOCD_flash.sh",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "group": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "JLink_flash_linux",
-            "detail": "J-Link 烧录（Linux）",
-            "type": "process",
-            "command": "${workspaceFolder}/Flash/JLink_flash.sh",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "group": "build",
-            "problemMatcher": []
-        },
-        /* ==================== 烧录（Windows） ==================== */
-        {
-            "label": "OpenOCD_flash_win",
-            "detail": "OpenOCD + DAPLink 烧录（Windows）",
-            "type": "process",
-            "command": "${workspaceFolder}/Flash/OpenOCD_flash.bat",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "group": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "JLink_flash_win",
-            "detail": "J-Link 烧录（Windows）",
-            "type": "process",
-            "command": "${workspaceFolder}/Flash/JLink_flash.bat",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "group": "build",
-            "problemMatcher": []
-        },
+        /* ==================== 烧录（按平台自动选 .sh / .bat） ==================== */
         {
             "label": "OpenOCD_flash",
             "detail": "OpenOCD + CMSIS-DAP 烧录",

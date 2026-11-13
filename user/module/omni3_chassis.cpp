@@ -69,4 +69,21 @@ void Omni3Chassis::stop()
   }
 }
 
+/** @brief 自转占掉 R·|ω| 之后，平移还能用多少 (cm/s) */
+float Omni3Chassis::translation_budget(float wz_rad_s) const
+{
+  if (wz_rad_s < 0.0f)
+  {
+    wz_rad_s = -wz_rad_s;
+  }
+  if (wz_rad_s > _config.w_max_rad_s)
+  {
+    wz_rad_s = _config.w_max_rad_s; // drive() 也会限到同一个值，这里先对齐
+  }
+
+  const float left = _config.v_max_cm_s - (_config.wheel_radius_cm * wz_rad_s);
+
+  return (left > 0.0f) ? left : 0.0f;
+}
+
 // ----------------

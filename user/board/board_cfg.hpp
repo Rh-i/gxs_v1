@@ -24,6 +24,7 @@
 #include "tim.h"
 #include "usart.h"
 
+#include "bsp_series.hpp" // IWYU pragma: keep（ICBSP_DMA_BUFFER、BSP_CAN_MODULE_ENABLED）
 #include "bsp_dwt.hpp"
 #include "bsp_encoder.hpp"
 #include "bsp_gpio.hpp"
@@ -34,6 +35,7 @@
 #include "device_motor.hpp"
 #include "device_r9ds.hpp"
 #include "device_servo.hpp"
+#include "device_wt102.hpp"
 
 
 /** @brief 板级初始化：各实例 init() */
@@ -49,24 +51,30 @@ void board_init(void);
 
 /* ==================== 外设：UART（5 路全 DMA） ==================== */
 
-inline __attribute__((section(".dma_buffer.bsp_uart2"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart2(
+inline ICBSP_DMA_BUFFER(bsp_uart2) BspUartT<uart_mode::dma, 128, 128> bsp_uart2(
     {.huart = &huart2, .mode = UartDir::TxRx, .baudrate = 230400U}); ///< PA2/PA3
 
-inline __attribute__((section(".dma_buffer.bsp_uart3"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart3(
+inline ICBSP_DMA_BUFFER(bsp_uart3) BspUartT<uart_mode::dma, 128, 128> bsp_uart3(
     {.huart = &huart3, .mode = UartDir::TxRx, .baudrate = 115200U}); ///< PC10/PC11（调试打印）
 
 // UART4 = SBUS：只收不发（RX 走 DMA + IDLE 断帧）；100000/8E2 由 CubeMX 写进 huart4
-inline __attribute__((section(".dma_buffer.bsp_uart4"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart4(
+inline ICBSP_DMA_BUFFER(bsp_uart4) BspUartT<uart_mode::dma, 128, 128> bsp_uart4(
     {.huart = &huart4, .mode = UartDir::RxOnly, .baudrate = 100000U}); ///< PA11/PA12（SBUS）
 
-inline __attribute__((section(".dma_buffer.bsp_uart7"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart7(
+inline ICBSP_DMA_BUFFER(bsp_uart7) BspUartT<uart_mode::dma, 128, 128> bsp_uart7(
     {.huart = &huart7, .mode = UartDir::TxRx, .baudrate = 921600U}); ///< PE7/PE8
 
-inline __attribute__((section(".dma_buffer.bsp_uart10"))) BspUartT<uart_mode::dma, 128, 128> bsp_uart10(
+inline ICBSP_DMA_BUFFER(bsp_uart10) BspUartT<uart_mode::dma, 128, 128> bsp_uart10(
     {.huart = &huart10, .mode = UartDir::TxRx, .baudrate = 921600U}); ///< PE2/PE3
 
-/** @brief 调试打印：默认走 USART3 */
-#define print_uart(...) bsp_uart3.printf(__VA_ARGS__)
+/** @brief 调试打印：默认走 USART3；关掉时宏展开为空，调用点不用改 */
+#define UART_PRINT_ENABLE 1
+
+#if UART_PRINT_ENABLE
+#  define print_uart(...) bsp_uart3.printf(__VA_ARGS__)
+#else
+#  define print_uart(...) ((void)0)
+#endif
 
 
 /* ==================== 外设：GPIO / 按键 ==================== */
@@ -119,6 +127,9 @@ inline BspEncoder bsp_encoder3({.htim = &htim4, .invert = false}); ///< PD12/PD1
 
 /// R9DS 遥控接收机：UART4（SBUS，DMA 接收）
 inline DeviceR9dsT<decltype(bsp_uart4)> r9ds(bsp_uart4);
+
+/// WT102 单轴陀螺仪：UART2（230400 8N1，上电即以 500 Hz 主动上报 0x52/0x53 帧）
+inline DeviceWt102T<decltype(bsp_uart2)> wt102(bsp_uart2);
 
 /// 舵机：TIM2 两路 50 Hz PWM，脉宽按 µs 填
 inline DeviceServo servo1({.pwm = &bsp_pwm1, .pulse_min_us = 500.0f, .pulse_max_us = 2500.0f,

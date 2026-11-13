@@ -42,6 +42,15 @@ extern "C"
    */
   void remote_task(void *argument);
 
+  /**
+   * @brief 痣螺仪任务：1 kHz 读 WT102（USART2），刷新类里 Z 轴三个量的最近两帧
+   * @param argument 任务参数（未使用，NULL）
+   * @note 不打印（`imu_task.cpp` 的 `IMU_PRINT_ENABLE` 默认 0）：数据直接从
+   *       `wt102.z_newest()` / `wt102.z_previous()` 取，单位换算（°/s、°、g）由用的人做。
+   *       本任务独占 `wt102.update()`。
+   */
+  void imu_task(void *argument);
+
 #ifdef __cplusplus
 }
 #endif

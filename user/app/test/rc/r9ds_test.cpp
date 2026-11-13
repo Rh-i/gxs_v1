@@ -25,10 +25,8 @@
 
 #include "app_test.hpp"
 
-
-
-
-#include "board_cfg.hpp"    // bsp_uart3（打印）
+#include "board_cfg.hpp" // bsp_uart3（打印）
+#include "system.hpp"    // sys_state
 #include "task.h"
 
 #include <stdint.h>
@@ -59,6 +57,7 @@ constexpr uint32_t PRINT_PERIOD_MS = 20U;
 extern "C" void r9ds_test_task(void *argument)
 {
   (void)argument;
+  sys_state.wait_running(); // 初始化失败时任务自行退出，不跑在半初始化的系统上
   static_assert(configTICK_RATE_HZ == 1000U, "本文件的周期常量按 1 ms tick 写");
 
 #if R9DS_TEST_PRINT_CHANNELS

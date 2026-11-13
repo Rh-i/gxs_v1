@@ -1,5 +1,6 @@
 #include "app_task.hpp"
 #include "board_cfg.hpp"
+#include "system.hpp" // sys_state
 
 #include "FreeRTOS.h" // IWYU pragma: keep
 #include "task.h"
@@ -20,6 +21,7 @@ constexpr uint32_t MOTOR_TASK_PERIOD_MS = 1U;
 extern "C" void motor_task(void *argument)
 {
   (void)argument;
+  sys_state.wait_running(); // 初始化失败时任务自行退出，不跑在半初始化的系统上
 
   TickType_t wake_time = xTaskGetTickCount();
 

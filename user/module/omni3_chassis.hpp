@@ -94,6 +94,18 @@ public:
   void stop();
 
   /**
+   * @brief 给定自转速度时，平移还能给多少 (cm/s) 而不触发逐轮限幅
+   *
+   * @param wz_rad_s 自转角速度 (rad/s)，内部取绝对值并按 w_max 限幅
+   * @return 剩余的平移预算 (cm/s)，最小 0
+   *
+   * @note 依据：每个轮子的平移系数向量模长恰好是 1（見文件头），所以
+   *       `|v_trans| + R·|ω| ≤ v_max` 时三个轮子都不会被截断。
+   *       小陀螺模式拿它做“保自转、缩平移”的等比缩放。
+   */
+  float translation_budget(float wz_rad_s) const;
+
+  /**
    * @brief 最近一次下发给某个轮子的目标速度
    * @param index 0=M1 1=M2 2=M3
    * @return 目标速度 (cm/s)
