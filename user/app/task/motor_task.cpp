@@ -1,6 +1,6 @@
 #include "app_task.hpp"
 #include "board_cfg.hpp"
-#include "system.hpp" // sys_state
+#include "service/system/system.hpp" // sys_state
 
 #include "FreeRTOS.h" // IWYU pragma: keep
 #include "task.h"

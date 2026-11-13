@@ -15,7 +15,7 @@
 
 #include "board_cfg.hpp"    // bsp_uart3（打印）
 #include "module_cfg.hpp" // chassis
-#include "system.hpp"     // sys_state
+#include "service/system/system.hpp"     // sys_state
 
 #include "FreeRTOS.h" // IWYU pragma: keep
 #include "task.h"
@@ -71,7 +71,7 @@ extern "C" void omni3_test_task(void *argument)
 
     bsp_uart3.printf("[OMNI] %-5s tgt %+5.0f %+5.0f %+5.0f | act %+5.1f %+5.1f %+5.1f\r\n", p.name,
                      chassis.wheel_target(0), chassis.wheel_target(1), chassis.wheel_target(2),
-                     motor1.speed_cm_s(), motor2.speed_cm_s(), motor3.speed_cm_s());
+                     motor1.get_speed_cm_s(), motor2.get_speed_cm_s(), motor3.get_speed_cm_s());
 
     vTaskDelay(PRINT_MS);
   }

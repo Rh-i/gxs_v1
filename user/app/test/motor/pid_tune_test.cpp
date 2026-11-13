@@ -1,7 +1,7 @@
 #include "app_test.hpp"
 
 #include "board_cfg.hpp"
-#include "system.hpp" // sys_state
+#include "service/system/system.hpp" // sys_state
 
 #include "FreeRTOS.h" // IWYU pragma: keep
 #include "task.h"
@@ -51,7 +51,7 @@ extern "C" void pid_tune_task(void *argument)
     {
       n = 0U;
       uint8_t frame[16];
-      const size_t len = motor3.pid_frame(frame);
+      const size_t len = motor3.get_pid_frame(frame);
       bsp_uart3.send(frame, len, 0U); // 0 ms：满就丢，不阻塞
     }
 

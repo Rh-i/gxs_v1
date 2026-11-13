@@ -4,8 +4,8 @@
  * @date 2026-11-06
  *
  * 类里只存数据，不打印、不换算：
- *   `wt102.z_newest()`   → 最新一帧的 {acc_z, gyro_z, yaw}（原始 int16）
- *   `wt102.z_previous()` → 上一帧的同样三个值
+ *   `wt102.get_z_newest()`   → 最新一帧的 {acc_z, gyro_z, yaw}（原始 int16）
+ *   `wt102.get_z_previous()` → 上一帧的同样三个值
  * 换算由用的人自己做：`yaw = yaw / 32768 * 180 (°)`、`wz = gyro_z / 32768 * 2000 (°/s)`、
  * `az = acc_z / 32768 * 16 (g)`（实测静止平放 az≈-2070 → -1.01 g）。
  *
@@ -15,7 +15,7 @@
 #include "app_task.hpp"
 
 #include "board_cfg.hpp" // wt102、bsp_uart3（打印）
-#include "system.hpp"    // sys_state
+#include "service/system/system.hpp"    // sys_state
 
 #include "FreeRTOS.h" // IWYU pragma: keep
 #include "task.h"
@@ -36,7 +36,7 @@ extern "C" void imu_task(void *argument)
 
   for (;;)
   {
-    // 本任务是该串口唯一的接收消费者；结果在 wt102.z_newest() / z_previous()
+    // 本任务是该串口唯一的接收消费者；结果在 wt102.get_z_newest() / z_previous()
     wt102.update();
 
     vTaskDelayUntil(&wake_time, pdMS_TO_TICKS(IMU_TASK_PERIOD_MS));

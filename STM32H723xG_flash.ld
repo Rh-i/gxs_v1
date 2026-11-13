@@ -168,7 +168,7 @@ SECTIONS
     . = ALIGN(32);
     __dma_buffer_end = .;
   } >RAM_D1 AT> FLASH
-  __dma_buffer_load = LOADADDR(.dma_buffer);
+  __dma_buffer_load = LOADADDR(.dma_buffer) + (__dma_buffer_start - ADDR(.dma_buffer)); /* 段内 ALIGN(32) 会让起点后移，加载地址同样偏移 */
 
   /* stm32_framework：fault_record 现场，NOLOAD 且不在 .bss 范围，复位后仍保留 */
   .noinit (NOLOAD) :

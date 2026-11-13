@@ -27,7 +27,7 @@
 
 #include "board_cfg.hpp" // r9ds
 #include "module_cfg.hpp" // chassis
-#include "system.hpp"     // sys_state
+#include "service/system/system.hpp"     // sys_state
 
 #include "FreeRTOS.h" // IWYU pragma: keep
 #include "task.h"
@@ -106,7 +106,7 @@ extern "C" void remote_task(void *argument)
       continue;
     }
 
-    const auto  &rc   = r9ds.rc();
+    const auto  &rc   = r9ds.get_rc();
     const int8_t mode = static_cast<int8_t>(rc.switch_c); // +1 自动 / 0 停车 / -1 遥控
 
     if (mode >= 0)
@@ -130,7 +130,7 @@ extern "C" void remote_task(void *argument)
       /* ---------- 小陀螺模式：自转 + 场地系平移 ---------- */
       if (!spin_mode)
       {
-        yaw_entry = wt102.z_newest().yaw; // 上升沿：此刻车头方向 = 场地系 0°
+        yaw_entry = wt102.get_z_newest().yaw; // 上升沿：此刻车头方向 = 场地系 0°
         spin_mode = true;
       }
 
@@ -139,7 +139,7 @@ extern "C" void remote_task(void *argument)
       // 把「场地系」摇杆向量反旋回车体系：v_body = R(-Δyaw) · v_field
       if (wt102.is_online())
       {
-        const int16_t dyaw = static_cast<int16_t>(wt102.z_newest().yaw - yaw_entry);
+        const int16_t dyaw = static_cast<int16_t>(wt102.get_z_newest().yaw - yaw_entry);
         const float   a    = static_cast<float>(dyaw) * YAW_RAW_TO_RAD * SPIN_YAW_SIGN;
         const float   c    = cosf(a);
         const float   s    = sinf(a);

@@ -66,3 +66,16 @@ Makefile
 Thumbs.db
 
 Example/
+
+# >>> icbsp（integrate.py 追加的示例忽略项）
+build/
+.cache/
+compile_commands.json
+__pycache__/
+*.pyc
+.vscode/.cortex-debug*
+Flash/*.log
+*.ioc.bak-*
+.agents/skills/_emberprobe/
+.agents/skills/mcu-*/
+# <<< icbsp

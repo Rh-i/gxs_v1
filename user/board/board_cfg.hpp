@@ -1,76 +1,99 @@
 /**
  * @file board_cfg.hpp
- * @brief 板级实例配置（gxs_v1）
+ * @brief 板级实例配置（gxs_v1）：本板有哪些外设实例、绑定哪些 CubeMX 句柄、参数是什么
  *
- * @details 由旧工程的 `User/Bsp/bsp_cfg.hpp` + `User/Device/device_cfg.hpp` 合并而来：
- *          - 外设实例改成 C++20 `inline` 变量，定义只在这里出现一次
- *          - 旧 `UartMode::TxRx` → `UartDir::TxRx`，旧 `uart_detail::DmaTransport`
- *            → `uart_mode::dma`
- *          - 旧 `DeviceMotor` 的 `.uart` 字段新库没有，波形改用 `pid_frame()` 自己发
- *          - 旧 `Pid::Config{{kp, ki, kd}, {limit}}` → `PID::Config(kp, ki, kd, out_max)`
+ * @details
  *
- *          【硬规矩】
- *            - 串口用 DMA 时必须放 `.dma_buffer`，且段名按变量唯一（`.dma_buffer.<变量名>`）：
- *              实例是 inline 变量，段名相同会让多个 TU 的弱定义数据挤进同一个输出段
- *            - 只能用库里已有的 `BspUartT` 组合：`<dma,128,128>`、`<it,128,128>`、`<it,128,32>`
- *            - 每个实例都要在 `board_instances.hpp` 里出现，否则中断不会分发
+ * 【板级四个文件的分工】
+ *
+ *   | 文件                  | 放什么                                | 什么时候改              |
+ *   | --------------------- | ------------------------------------- | ----------------------- |
+ *   | `hardware_config.h`   | 库的全部宏（开关/优先级/队列/超时）    | 调库的行为、换板        |
+ *   | `board_cfg.hpp`（本文件） | 外设实例（inline 全局变量）与句柄绑定 | 加/删外设、改量程波特率 |
+ *   | `board_instances.hpp` | 实例名清单（X-macro）                 | **每次加实例都要同步**  |
+ *   | `board_cfg.cpp`       | `board_init()`：谁先 init、谁后 init  | 改初始化顺序、加设备    |
+ *
+ * 【三条硬规矩（踩了就很难查）】
+ *
+ *   1. **串口 / SPI 实例必须放 `.dma_buffer` 段，且段名按变量唯一**
+ *      H7 的 DMA1/DMA2 访问不到 ITCM / DTCM；段名必须写成 `.dma_buffer.<变量名>`，
+ *      因为实例是 C++17 `inline` 变量，多个 TU 各 emit 一份弱定义。
+ *      `ICBSP_DMA_BUFFER(变量名)` 就是干这个的。
+ *
+ *   2. **`BspUartT` 只有头文件，Transport 与缓冲尺寸随便组合**
+ *      DMA 模式的 RX DMA 由 `init()` 自动改成循环模式；CubeMX 里配 Normal 也可以。
+ *
+ *   3. **本文件每加一个实例，`board_instances.hpp` 必须同步加名字**
+ *      串口实例漏写时 `init()` 返回 BAD_ARG（board_init() 的 ICBSP_CHECK 会停在那行）。
+ *
+ * 【本板（gxs_v1 / DM-MC02 类）】
+ *   无 CAN、无 SPI；UART：2/3/4/7/10（USART3 是调试打印）；
+ *   3 路 DeviceMotor（TIM3 / TIM16+TIM17 / TIM12 + TIM1/TIM8/TIM4 编码器）+ 2 路舵机
+ *   + R9DS(SBUS, UART4) + WT102 陀螺仪(UART2)。
+ *
+ * @note 本工程是手写板级配置，不使用 integrate.py 的 `<ICBSP-GEN ...>` 生成区。
  */
 
 #ifndef __BOARD_CFG_HPP__
 #define __BOARD_CFG_HPP__
 
-// CubeMX 句柄
-#include "main.h"
-#include "tim.h"
-#include "usart.h"
+// CubeMX 生成的句柄头文件
+#include "main.h"  // IWYU pragma: keep
+#include "tim.h"   // IWYU pragma: keep
+#include "usart.h" // IWYU pragma: keep
 
-#include "bsp_series.hpp" // IWYU pragma: keep（ICBSP_DMA_BUFFER、BSP_CAN_MODULE_ENABLED）
-#include "bsp_dwt.hpp"
-#include "bsp_encoder.hpp"
-#include "bsp_gpio.hpp"
-#include "bsp_key.hpp"
-#include "bsp_pwm.hpp"
-#include "bsp_uart.hpp"
+#include "bsp/bsp_series.hpp" // IWYU pragma: keep（ICBSP_DMA_BUFFER、ICBSP_CAN_MODULE_ENABLED）
+#include "bsp/bsp_dwt.hpp"
+#include "bsp/bsp_encoder.hpp"
+#include "bsp/bsp_gpio.hpp"
+#include "bsp/bsp_key.hpp"
+#include "bsp/bsp_pwm.hpp"
+#include "bsp/bsp_uart.hpp"
 
-#include "device_motor.hpp"
-#include "device_r9ds.hpp"
-#include "device_servo.hpp"
-#include "device_wt102.hpp"
+#include "device/actuator/device_servo.hpp"
+#include "device/motor/device_motor.hpp"
+#include "device/remote/device_r9ds.hpp"
+#include "device/sensor/device_wt102.hpp"
 
 
-/** @brief 板级初始化：各实例 init() */
+/** @brief 板级初始化：各实例 init()，实现在 board_cfg.cpp */
 void board_init(void);
 
 
-/* ==================== 外设：计时 ==================== */
+/* ==================== 外设实例 ==================== */
+// 外设实例是 inline 全局变量：整个工程只有一份定义，任何包含本头文件的 TU 都能直接用。
+// 为什么必须 constexpr 构造 + 平凡析构：inline 变量要求常量初始化，否则每个 TU 都会生成
+// 一份构造代码；需要释放资源时显式调 deinit()。
 
-// bsp_dwt 由库内部初始化：实例定义在 stm32-framework/code/service/system.cpp，
-// 初始化在 code/service/system.cpp 的 system_init() 里。这里只包含头文件，直接调用即可
-// （如 bsp_dwt.get_delta_s(&last)），不要再定义实例、不要再调 init()。
-
+/**
+ * DWT 计时基准：**由库内部初始化**
+ *
+ * @note 实例定义在 `code/service/system/system.cpp`，这里只 `#include "bsp/bsp_dwt.hpp"`
+ *       后直接调用（如 `bsp_dwt.get_delta_s(&last)`）。不要在这里再定义实例、也不要再调 init()。
+ */
 
 /* ==================== 外设：UART（5 路全 DMA） ==================== */
 
 inline ICBSP_DMA_BUFFER(bsp_uart2) BspUartT<uart_mode::dma, 128, 128> bsp_uart2(
-    {.huart = &huart2, .mode = UartDir::TxRx, .baudrate = 230400U}); ///< PA2/PA3
+  {.huart = &huart2, .mode = UartDir::TxRx, .baudrate = 230400U}); ///< PA2/PA3（WT102）
 
 inline ICBSP_DMA_BUFFER(bsp_uart3) BspUartT<uart_mode::dma, 128, 128> bsp_uart3(
-    {.huart = &huart3, .mode = UartDir::TxRx, .baudrate = 115200U}); ///< PC10/PC11（调试打印）
+  {.huart = &huart3, .mode = UartDir::TxRx, .baudrate = 115200U}); ///< PC10/PC11（调试打印）
 
 // UART4 = SBUS：只收不发（RX 走 DMA + IDLE 断帧）；100000/8E2 由 CubeMX 写进 huart4
 inline ICBSP_DMA_BUFFER(bsp_uart4) BspUartT<uart_mode::dma, 128, 128> bsp_uart4(
-    {.huart = &huart4, .mode = UartDir::RxOnly, .baudrate = 100000U}); ///< PA11/PA12（SBUS）
+  {.huart = &huart4, .mode = UartDir::RxOnly, .baudrate = 100000U}); ///< PA11/PA12（SBUS）
 
 inline ICBSP_DMA_BUFFER(bsp_uart7) BspUartT<uart_mode::dma, 128, 128> bsp_uart7(
-    {.huart = &huart7, .mode = UartDir::TxRx, .baudrate = 921600U}); ///< PE7/PE8
+  {.huart = &huart7, .mode = UartDir::TxRx, .baudrate = 921600U}); ///< PE7/PE8
 
 inline ICBSP_DMA_BUFFER(bsp_uart10) BspUartT<uart_mode::dma, 128, 128> bsp_uart10(
-    {.huart = &huart10, .mode = UartDir::TxRx, .baudrate = 921600U}); ///< PE2/PE3
+  {.huart = &huart10, .mode = UartDir::TxRx, .baudrate = 921600U}); ///< PE2/PE3
 
 /** @brief 调试打印：默认走 USART3；关掉时宏展开为空，调用点不用改 */
-#define UART_PRINT_ENABLE 1
+#define ICBSP_UART_PRINT_ENABLE 1
 
-#if UART_PRINT_ENABLE
+#if ICBSP_UART_PRINT_ENABLE
 #  define print_uart(...) bsp_uart3.printf(__VA_ARGS__)
 #else
 #  define print_uart(...) ((void)0)
@@ -123,7 +146,10 @@ inline BspEncoder bsp_encoder2({.htim = &htim8, .invert = false}); ///< PC6/PC7 
 inline BspEncoder bsp_encoder3({.htim = &htim4, .invert = false}); ///< PD12/PD13 TIM4
 
 
+/* ==================== */
 /* ==================== 设备实例 ==================== */
+// 设备层：包装外设，提供“按物理量”的接口；顺序要求：必须在上面的外设实例之后定义，
+// 并且在 board_init() 里外设 init() 之后 init()。
 
 /// R9DS 遥控接收机：UART4（SBUS，DMA 接收）
 inline DeviceR9dsT<decltype(bsp_uart4)> r9ds(bsp_uart4);
@@ -172,5 +198,7 @@ inline DeviceMotor motor3({.pwm_a              = &bsp_pwm5,
                            .gear_ratio         = 32.0f,
                            .wheel_diameter_cm  = 7.0f,
                            .pid                = PID::Config(20.0f, 0.023f, 0.0f, 1000.0f)});
+
+/* ==================== */
 
 #endif // __BOARD_CFG_HPP__

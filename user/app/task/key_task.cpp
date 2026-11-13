@@ -1,6 +1,6 @@
 #include "board_cfg.hpp"
-#include "bsp_key.hpp" // IWYU pragma: keep (BspKey::Event)
-#include "system.hpp"  // sys_state
+#include "bsp/bsp_key.hpp" // IWYU pragma: keep (BspKey::Event)
+#include "service/system/system.hpp"  // sys_state
 #include "FreeRTOS.h" // IWYU pragma: keep
 #include "task.h"
 
@@ -28,7 +28,7 @@ extern "C" void key_task(void *argument)
         break;
     }
 
-    if (!key_user.pressed()) // 松手：都灭
+    if (!key_user.is_pressed()) // 松手：都灭
     {
       led_b.reset();
       led_g.reset();

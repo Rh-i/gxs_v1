@@ -26,7 +26,7 @@
 #include "app_test.hpp"
 
 #include "board_cfg.hpp" // bsp_uart3（打印）
-#include "system.hpp"    // sys_state
+#include "service/system/system.hpp"    // sys_state
 #include "task.h"
 
 #include <stdint.h>
@@ -77,7 +77,7 @@ extern "C" void r9ds_test_task(void *argument)
     {
 #if R9DS_TEST_PRINT_CHANNELS
       // 拨哪个部件，对应的那个数就会动
-      const auto &rc = r9ds.rc();
+      const auto &rc = r9ds.get_rc();
 
       bsp_uart3.printf("[R9DS] CH1..CH5  %+4d %+4d %+4d %+4d %+4d\r\n",
                        rc.right_vertical, rc.right_horizontal, rc.left_vertical, rc.left_horizontal,
@@ -92,8 +92,8 @@ extern "C" void r9ds_test_task(void *argument)
 
       bsp_uart3.printf("[R9DS] on=%u fs=%u lost=%u ls=%lu byte=%.0f frame=%.0f badtail=%lu\r\n",
                        r9ds.is_online() ? 1U : 0U,
-                       r9ds.failsafe() ? 1U : 0U,
-                       r9ds.frame_lost() ? 1U : 0U,
+                       r9ds.is_failsafe() ? 1U : 0U,
+                       r9ds.is_frame_lost() ? 1U : 0U,
                        static_cast<unsigned long>(d.lost_streak),
                        d.byte_cnt,
                        d.frame_cnt,

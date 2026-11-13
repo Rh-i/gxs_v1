@@ -2,13 +2,26 @@
  * @file board_cfg.cpp
  * @brief `board_init()`：把 board_cfg.hpp 里的实例按正确顺序逐个 init()
  *
- * @details 顺序：计时基准 → 外设（UART / PWM / 编码器 / GPIO / 按键）→ 设备。
- *          每一路 init() 都用 ICBSP_CHECK：失败就地停机，fault_record 会记下代码行号。
+ * @details
+ *
+ * 【本文件只放一件事】`board_init()` 的函数体。
+ *   实例都定义在 `board_cfg.hpp`（inline 全局变量），配置和流程分开：
+ *     - 加外设 / 改参数  → `board_cfg.hpp` + `board_instances.hpp`
+ *     - 改顺序 / 加设备  → 本文件
+ *
+ * 【为什么每行都 ICBSP_CHECK】
+ *   `init()` 返回非 OK 说明硬件或参数不对（CubeMX 没生成句柄、DMA 没配、实例没写进清单、
+ *   芯片 ID 读不到…）。`ICBSP_CHECK` 总会求值（不要写进 configASSERT：断言可能被定义成空），
+ *   失败就地停机，`fault_record` 会记下**代码行号**，一眼能看出是哪一路。
+ *
+ * 【顺序】
+ *   外设（UART / PWM / 编码器 / 按键）→ 设备（依赖已 init 的外设）→ 电机（绑齐才 init）。
+ *   全部发生在调度器启动前：这里不允许阻塞等事件、也不允许依赖别的任务在跑。
  */
 
 #include "board_cfg.hpp"
 
-#include "fault_record.hpp" // ICBSP_CHECK
+#include "service/system/fault_record.hpp" // ICBSP_CHECK
 
 #include "FreeRTOS.h" // IWYU pragma: keep (configASSERT)
 
@@ -18,7 +31,7 @@ void board_init(void)
   // ① 计时基准 bsp_dwt 已由 system_init() 内部 init()，这里不再重复初始化
 
   // ② 串口：DMA 收发（实例在 .dma_buffer）
-  ICBSP_CHECK(bsp_uart2.init() == Status::OK);  // PA2/PA3
+  ICBSP_CHECK(bsp_uart2.init() == Status::OK);  // PA2/PA3（WT102）
   ICBSP_CHECK(bsp_uart3.init() == Status::OK);  // 调试打印
   ICBSP_CHECK(bsp_uart4.init() == Status::OK);  // SBUS 接收机（只收）
   ICBSP_CHECK(bsp_uart7.init() == Status::OK);  // PE7/PE8
@@ -43,7 +56,7 @@ void board_init(void)
   ICBSP_CHECK(key_user.init() == Status::OK);
 
   // ⑥ 设备：必须在 BSP 之后（依赖已 init 的串口 / PWM / 编码器）
-  ICBSP_CHECK(r9ds.init() == Status::OK);   // UART4
+  ICBSP_CHECK(r9ds.init() == Status::OK);   // UART4（SBUS 帧格式校验）
   ICBSP_CHECK(wt102.init() == Status::OK);  // UART2（230400 8N1）
   ICBSP_CHECK(servo1.init() == Status::OK); // PB10 TIM2_CH3
   ICBSP_CHECK(servo2.init() == Status::OK); // PB11 TIM2_CH4

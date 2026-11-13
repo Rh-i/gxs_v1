@@ -31,7 +31,7 @@
 #ifndef __OMNI3_CHASSIS_HPP__
 #define __OMNI3_CHASSIS_HPP__
 
-#include "device_motor.hpp" // 三个轮子的速度环
+#include "device/motor/device_motor.hpp" // 三个轮子的速度环
 
 #include <stdint.h>
 

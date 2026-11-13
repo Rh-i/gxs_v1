@@ -15,9 +15,9 @@
 #include "cmsis_os2.h" // IWYU pragma: keep（osPriorityNormal / osPriorityHigh）
 
 #include "board_cfg.hpp"    // 板级实例（bsp_uart3 打印、motor1/2/3）
-#include "fault_record.hpp" // ICBSP_CHECK
+#include "service/system/fault_record.hpp" // ICBSP_CHECK
 #include "module_cfg.hpp"   // chassis
-#include "system.hpp"       // system_init / system_start / sys_state
+#include "service/system/system.hpp"       // system_init / system_start / sys_state
 
 #include "app_task.hpp"
 #include "app_test.hpp" // 测试开关（默认全 0：不创建任何自测任务）
